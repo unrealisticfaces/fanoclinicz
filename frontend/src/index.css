@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  
+  /* Fano Clinic Brand Colors */
+  --color-fano-primary: #206bc4;
+  --color-fano-primary-hover: #1a569d;
+  --color-fano-bg: #f8f9fa; /* Very light gray for page body */
+  --color-fano-surface: #ffffff; /* Pure white for cards */
+  --color-fano-border: #e6e7e9;
+  --color-fano-text: #1d273b;
+  --color-fano-muted: #667382;
+}
+
+/* Force Light Mode & Base Styles */
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-fano-bg);
+  color: var(--color-fano-text);
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+}
+
+/* Custom Scrollbar for Clinic Data Tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
