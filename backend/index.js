@@ -5,11 +5,17 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 
-// CRITICAL FIX: Force the Windows Service to look in the exact backend folder for the .env file
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-// --- LIVE LOGGING TO FILE ---
-const logStream = fs.createWriteStream(path.join(__dirname, 'server.log'), { flags: 'a' });
+const logPath = path.join(__dirname, 'server.log');
+const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+
+// CRITICAL FIX: Catch fatal crashes and force them into the log
+process.on('uncaughtException', (err) => {
+    fs.appendFileSync(logPath, `\n[FATAL CRASH] ${err.stack}\n`);
+    process.exit(1);
+});
+
 const originalLog = console.log;
 const originalError = console.error;
 
@@ -39,7 +45,6 @@ const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 app.use('/uploads', express.static(uploadDir));
 
-// --- API ROUTES ---
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/patients', require('./routes/patients'));
@@ -49,15 +54,14 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/system', require('./routes/system')); 
 app.use('/api/queue', require('./routes/queue'));
 
-// --- SERVE COMPILED REACT FRONTEND ---
 const frontendPath = path.join(__dirname, '../frontend/dist');
 app.use(express.static(frontendPath));
 
-app.get('*', (req, res) => {
+// CRITICAL FIX: Express 5 requires a Regex /(.*)/ instead of the old '*' syntax
+app.get(/(.*)/, (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-// --- SOCKET.IO ---
 io.on('connection', (socket) => {
     console.log(`User connected to queue socket: ${socket.id}`);
     socket.on('new_arrival', () => io.emit('queue_updated'));
@@ -70,9 +74,8 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || '0.0.0.0';
 
-server.listen(PORT, HOST, () => {
-    console.log(`Fano Dental API securely bound to ${HOST}:${PORT}`);
-    console.log(`Socket.io server active for Queue Manager`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Fano Dental API successfully bound to Port ${PORT}`);
+    console.log(`System is fully accessible via Localhost and LAN Network.`);
 });

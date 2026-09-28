@@ -4,7 +4,8 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
     try {
-        const [rows] = await db.execute(`SELECT * FROM daily_queue WHERE date(created_at) = date('now', 'localtime') ORDER BY id ASC`);
+        // CRITICAL FIX: Convert the UTC database time to local time before checking if it is "today"
+        const [rows] = await db.execute(`SELECT * FROM daily_queue WHERE date(created_at, 'localtime') = date('now', 'localtime') ORDER BY id ASC`);
         res.json(rows);
     } catch (error) { res.status(500).json({ error: 'Failed to fetch queue' }); }
 });

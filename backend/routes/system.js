@@ -8,35 +8,11 @@ const router = express.Router();
 const logFilePath = path.join(__dirname, '../system_logs.json');
 let isBackingUp = false; 
 
-// --- 1. AUTO-INITIALIZE SYSTEM SETTINGS TABLE ---
-const initSettingsDB = async () => {
-    try {
-        await db.query(`
-            CREATE TABLE IF NOT EXISTS system_settings (
-                id INT PRIMARY KEY, clinicName VARCHAR(255), address VARCHAR(255),
-                phone VARCHAR(100), email VARCHAR(100), taxId VARCHAR(100),
-                currency VARCHAR(20), timezone VARCHAR(100), audioAlerts BOOLEAN,
-                browserPush BOOLEAN, autoClearQueue BOOLEAN, autoBackup BOOLEAN
-            )
-        `);
-        const [rows] = await db.query('SELECT * FROM system_settings WHERE id = 1');
-        if (rows.length === 0) {
-            await db.query(`
-                INSERT INTO system_settings 
-                (id, clinicName, address, phone, email, taxId, currency, timezone, audioAlerts, browserPush, autoClearQueue, autoBackup) 
-                VALUES (1, 'Fano Dental Clinic', '123 Main Street, Cebu City, Philippines', '0917-123-4567', 'hello@fanodental.com', '000-123-456-000', 'PHP', 'Asia/Manila', 1, 0, 1, 0)
-            `);
-        }
-    } catch (err) {
-        console.error("Failed to initialize settings table:", err.message);
-    }
-};
-initSettingsDB();
-
-// --- 2. SETTINGS API ROUTES ---
+// --- SETTINGS API ROUTES ---
 router.get('/settings', async (req, res) => {
     try {
         const [rows] = await db.query('SELECT * FROM system_settings WHERE id = 1');
+        if (rows.length === 0) return res.json({});
         const settings = rows[0];
         settings.audioAlerts = !!settings.audioAlerts;
         settings.browserPush = !!settings.browserPush;
@@ -63,7 +39,6 @@ router.put('/settings', async (req, res) => {
     }
 });
 
-// --- 3. SYSTEM LOGS ROUTE ---
 const addSystemLog = (action, status, details) => {
     let logs = [];
     if (fs.existsSync(logFilePath)) {
@@ -90,7 +65,6 @@ router.get('/logs', (req, res) => {
     res.json({ logs, backups });
 });
 
-// --- 4. BACKUP EXECUTION (SQLITE FIX) ---
 router.post('/daily-backup', async (req, res) => {
     if (isBackingUp) return res.json({ message: 'A backup is currently in progress.' });
     
@@ -98,7 +72,7 @@ router.post('/daily-backup', async (req, res) => {
 
     if (!manual) {
         const [rows] = await db.query('SELECT autoBackup FROM system_settings WHERE id = 1');
-        if (!rows[0].autoBackup) return res.json({ message: 'Auto-backup is disabled in global settings. Skipped.' });
+        if (!rows || rows.length === 0 || !rows[0].autoBackup) return res.json({ message: 'Auto-backup skipped.' });
     }
 
     const date = new Date();
@@ -127,7 +101,6 @@ router.post('/daily-backup', async (req, res) => {
     }
 });
 
-// --- 5. SECURE WIPE (SQLITE FIX) ---
 router.post('/wipe', async (req, res) => {
     const { adminId, password } = req.body;
     try {
@@ -146,7 +119,6 @@ router.post('/wipe', async (req, res) => {
         await db.execute('DELETE FROM dental_charts');
         await db.execute('DELETE FROM daily_queue');
         
-        // Reset Auto-Increments
         await db.execute('DELETE FROM sqlite_sequence WHERE name="patients"');
         await db.execute('DELETE FROM sqlite_sequence WHERE name="invoices"');
         await db.execute('DELETE FROM sqlite_sequence WHERE name="dental_charts"');

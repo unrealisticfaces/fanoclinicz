@@ -17,13 +17,14 @@ router.get('/metrics', async (req, res) => {
         const [patients] = await db.execute('SELECT COUNT(*) as activePatients FROM patients');
 
         // 3. Get Daily Revenue for the Area Chart (Last 14 days)
+        // CRITICAL FIX: Ensure dates use localtime, and return as a string.
         const [daily] = await db.execute(`
             SELECT 
-                DATE(created_at) as date, 
+                DATE(created_at, 'localtime') as date, 
                 SUM(grand_total) as gross, 
                 SUM(amount_paid) as collected 
             FROM invoices 
-            GROUP BY DATE(created_at)
+            GROUP BY DATE(created_at, 'localtime')
             ORDER BY date DESC
             LIMIT 14
         `);
@@ -31,7 +32,8 @@ router.get('/metrics', async (req, res) => {
         // Format the daily revenue into the object structure the frontend expects
         const dailyRevenue = {};
         daily.forEach(row => {
-            const dateStr = row.date.toISOString().split('T')[0];
+            // CRITICAL FIX: SQLite already returns a "YYYY-MM-DD" string, so we just use it directly!
+            const dateStr = row.date; 
             dailyRevenue[dateStr] = {
                 gross: parseFloat(row.gross) || 0,
                 collected: parseFloat(row.collected) || 0
