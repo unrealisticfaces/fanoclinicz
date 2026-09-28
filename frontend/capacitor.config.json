@@ -1,0 +1,9 @@
+{
+  "appId": "com.fanodental.app",
+  "appName": "Fano Dental",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}
